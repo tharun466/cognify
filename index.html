@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACKFEST 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+            color: white;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* --- PRELOADER --- */
+        #preloader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0f172a; z-index: 99999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease, visibility 0.5s;
+        }
+        .loader-ring {
+            width: 80px; height: 80px; border: 4px solid transparent;
+            border-top: 4px solid #00f2fe; border-right: 4px solid #00f2fe;
+            border-radius: 50%; animation: spin 1s linear infinite;
+            box-shadow: 0 0 15px #00f2fe;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loader-text { margin-top: 20px; font-family: monospace; color: #00f2fe; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        .preloader-hidden { opacity: 0; visibility: hidden; }
+
+        /* --- NEON ANIMATION --- */
+        .neon-glitch {
+            position: relative; color: white; font-weight: 900; text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.7), 0 0 20px rgba(0, 242, 254, 0.5);
+            animation: flicker 4s infinite alternate;
+        }
+        @keyframes flicker {
+            0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; text-shadow: 0 0 40px #00f2fe, 0 0 80px #00f2fe; }
+            20%, 24%, 55% { opacity: 0.2; text-shadow: none; }
+        }
+
+        /* --- HARDWARE HUD --- */
+        #hardwareHud {
+            position: fixed; bottom: 20px; left: 20px; z-index: 50;
+            background: rgba(0, 0, 0, 0.7); border: 1px solid #00f2fe;
+            padding: 10px; border-radius: 8px; font-family: monospace; font-size: 10px;
+            color: #00f2fe; backdrop-filter: blur(5px);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.2); width: 140px;
+        }
+        .hud-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .hud-bar-bg { width: 50px; height: 6px; background: #333; display: inline-block; }
+        .hud-bar-fill { height: 100%; background: #00f2fe; width: 0%; transition: width 0.5s; }
+        .blink-dot { width: 6px; height: 6px; background: #00f2fe; border-radius: 50%; display: inline-block; animation: blink 1s infinite; }
+
+        /* GENERAL STYLES */
+        #neuralCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: 0.3; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .glass-card:hover { transform: translateY(-5px); border-color: rgba(255, 255, 255, 0.3); box-shadow: 0 15px 40px 0 rgba(99, 102, 241, 0.2); }
+        
+        .faq-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .faq-item.active .faq-content { max-height: 200px; }
+        .faq-icon { transition: transform 0.3s; }
+        .faq-item.active .faq-icon { transform: rotate(180deg); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .reveal { opacity: 0; } .reveal.active { animation: fadeIn 0.8s forwards; }
+        .text-gradient { background: linear-gradient(to right, #4facfe 0%, #00f2fe 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .super-input { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); padding: 15px; border-radius: 12px; color: white; outline: none; width: 100%; transition: all 0.3s; }
+        .super-input:focus { background: rgba(255, 255, 255, 0.15); border-color: #4facfe; box-shadow: 0 0 15px rgba(79, 172, 254, 0.3); }
+        option { background: #1e1b4b; color: white; }
+
+        .calendar-day { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 0.8rem; margin: 2px auto; }
+        .event-day { background: #00f2fe; color: black; font-weight: bold; box-shadow: 0 0 10px #00f2fe; transform: scale(1.1); }
+        .normal-day { color: rgba(255,255,255,0.7); }
+        
+        #poster-modal { transition: opacity 0.5s ease; z-index: 9990; }
+        .hidden-modal { opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div id="preloader">
+        <div class="loader-ring"></div>
+        <div class="loader-text">INITIALIZING...</div>
+    </div>
+
+    <div id="hardwareHud">
+        <div class="hud-row border-b border-gray-700 pb-1 mb-2">SYSTEM STATUS</div>
+        <div class="hud-row"><span>BATT</span><div class="flex items-center"><span id="battVal" class="mr-2">--%</span><div class="hud-bar-bg"><div id="battBar" class="hud-bar-fill"></div></div></div></div>
+        <div class="hud-row"><span>NET</span><span class="text-green-400">ONLINE <span class="blink-dot"></span></span></div>
+        <div class="hud-row"><span>SYS</span><span id="sysLoad">12%</span></div>
+        <div class="text-[8px] text-gray-500 mt-1">ECE_SECURE_V2.0</div>
+    </div>
+
+    <canvas id="neuralCanvas"></canvas>
+
+   
+
+    <nav class="fixed top-0 w-full bg-[#0f172a]/80 backdrop-blur-md border-b border-white/10 z-50 py-4">
+        <div class="flex justify-center space-x-4 md:space-x-12 font-bold text-[10px] md:text-sm uppercase tracking-widest text-gray-300">
+            <a href="#home" class="hover:text-cyan-400 transition">Home</a>
+            <a href="#about" class="hover:text-cyan-400 transition">About</a>
+            <a href="#themes" class="hover:text-cyan-400 transition">Themes</a>
+            <a href="#timeline" class="hover:text-cyan-400 transition">Timeline</a>
+            <a href="#register" class="text-cyan-400 border border-cyan-400 px-4 py-1 rounded-full hover:bg-cyan-400 hover:text-black transition">Register</a>
+            <a href="#contact" class="hover:text-cyan-400 transition">Contact</a>
+        </div>
+    </nav>
+
+    <section id="home" class="min-h-screen flex flex-col justify-center items-center px-6 text-center relative z-10 pt-20">
+        <div class="max-w-5xl mx-auto">
+            <span class="bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 text-xs font-bold px-5 py-2 rounded-full uppercase tracking-[0.2em] mb-8 inline-block">
+                DECRA ECE Association
+            </span>
+            <h1 class="neon-glitch text-7xl md:text-9xl mb-6 tracking-tighter">COGNIFY</h1>
+            <p class="text-2xl text-gray-300 mb-12 font-light">
+                Intra-College Innovation Challenge <br>
+                <span class="text-cyan-400 font-bold">Feb 6th & 7th, 2026</span>
+            </p>
+
+            <div class="flex flex-wrap justify-center gap-6 mb-12">
+                <div class="glass-card p-4 rounded-xl min-w-[100px]"><div class="text-4xl font-bold text-gradient" id="days">00</div><div class="text-xs uppercase text-gray-400 mt-1">Days</div></div>
+                <div class="glass-card p-4 rounded-xl min-w-[100px]"><div class="text-4xl font-bold text-gradient" id="hours">00</div><div class="text-xs uppercase text-gray-400 mt-1">Hours</div></div>
+                <div class="glass-card p-4 rounded-xl min-w-[100px]"><div class="text-4xl font-bold text-gradient" id="mins">00</div><div class="text-xs uppercase text-gray-400 mt-1">Mins</div></div>
+                <div class="glass-card p-4 rounded-xl min-w-[100px]"><div class="text-4xl font-bold text-gradient" id="secs">00</div><div class="text-xs uppercase text-gray-400 mt-1">Secs</div></div>
+            </div>
+
+            <a href="#register" class="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-12 py-4 rounded-full font-bold text-lg shadow-[0_0_30px_rgba(6,182,212,0.5)] hover:shadow-[0_0_50px_rgba(6,182,212,0.8)] transition transform hover:scale-105 uppercase tracking-widest">
+                Register Now
+            </a>
+        </div>
+    </section>
+
+    <section id="about" class="py-24 px-6 relative z-10">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 uppercase tracking-widest">About The Event</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+                <div class="glass-card p-10 rounded-2xl text-center reveal">
+                    <i class="fas fa-rocket text-5xl text-cyan-400 mb-6"></i>
+                    <h3 class="text-2xl font-bold mb-4">Innovation</h3>
+                    <p class="text-gray-400 text-sm">Build solutions for real-world problems in AI and IoT.</p>
+                </div>
+                <div class="glass-card p-10 rounded-2xl text-center reveal" style="animation-delay: 0.2s;">
+                    <i class="fas fa-users text-5xl text-purple-400 mb-6"></i>
+                    <h3 class="text-2xl font-bold mb-4">Intra-College</h3>
+                    <p class="text-gray-400 text-sm">Exclusive for KNCET students across all Engineering departments.</p>
+                </div>
+                <div class="glass-card p-10 rounded-2xl text-center border-cyan-500/50 reveal" style="animation-delay: 0.4s;">
+                    <i class="fas fa-gavel text-5xl text-pink-400 mb-6"></i>
+                    <h3 class="text-2xl font-bold mb-4">Grand Jury</h3>
+                    <p class="text-gray-400 text-sm">Evaluated by <strong class="text-white">Staff, HOD, Alumni & Chief Guest</strong>.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="glass-card p-8 rounded-xl reveal">
+                    <h3 class="text-xl font-bold text-cyan-400 uppercase mb-4 border-b border-white/10 pb-2"><i class="fas fa-clipboard-list mr-2"></i> Mission Guidelines</h3>
+                    <ul class="space-y-4 text-sm text-gray-300">
+                        <li class="flex items-start"><span class="text-cyan-500 mr-2">➜</span> <span><strong>Team Size:</strong> Minimum 2 and Maximum 3 members allowed per team.</span></li>
+                        <li class="flex items-start"><span class="text-cyan-500 mr-2">➜</span> <span><strong>Eligibility:</strong> Open to all years (1st to 3rd) of KNCET. Inter-department teams are allowed.</span></li>
+                        <li class="flex items-start"><span class="text-cyan-500 mr-2">➜</span> <span><strong>Format:</strong> This is a 24-hour hackathon. You must build a working prototype (Hardware or Software).</span></li>
+                        <li class="flex items-start"><span class="text-cyan-500 mr-2">➜</span> <span><strong>Submission:</strong> Round 1 is Abstract Submission. Round 2 is Final Presentation.</span></li>
+                    </ul>
+                </div>
+                <div class="glass-card p-8 rounded-xl reveal" style="animation-delay: 0.2s;">
+                    <h3 class="text-xl font-bold text-purple-400 uppercase mb-4 border-b border-white/10 pb-2"><i class="fas fa-chart-line mr-2"></i> Evaluation Metrics</h3>
+                    <ul class="space-y-4 text-sm text-gray-300">
+                        <li class="flex items-start"><span class="text-purple-500 mr-2">➜</span> <span><strong>Novelty (30%):</strong> How unique is your solution? Does it solve a real problem?</span></li>
+                        <li class="flex items-start"><span class="text-purple-500 mr-2">➜</span> <span><strong>Technical Complexity (30%):</strong> Use of sensors, AI models, and code efficiency.</span></li>
+                        <li class="flex items-start"><span class="text-purple-500 mr-2">➜</span> <span><strong>Feasibility (20%):</strong> Can this actually be implemented in the real world?</span></li>
+                        <li class="flex items-start"><span class="text-purple-500 mr-2">➜</span> <span><strong>Presentation (20%):</strong> clarity of thought and Q&A defense.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+   <section id="themes" class="py-24 px-6 bg-black/20 relative z-10">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 uppercase tracking-widest text-gradient">Themes</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="glass-card p-8 rounded-2xl hover:bg-white/5 reveal">
+                    <h3 class="text-xl font-bold">Smart & Intelligent Systems</h3>
+                </div>
+                
+                <div class="glass-card p-8 rounded-2xl hover:bg-white/5 reveal">
+                    <h3 class="text-xl font-bold">Technology for Human Welfare</h3>
+                </div>
+                
+                <div class="glass-card p-8 rounded-2xl hover:bg-white/5 reveal">
+                    <h3 class="text-xl font-bold">AI-Powered Embedded Innovations</h3>
+                </div>
+                
+                <div class="glass-card p-8 rounded-2xl hover:bg-white/5 reveal">
+                    <h3 class="text-xl font-bold">Connected World: IoT & Automation</h3>
+                </div>
+                
+                <div class="glass-card p-8 rounded-2xl hover:bg-white/5 reveal">
+                    <h3 class="text-xl font-bold">Sustainable & Future-Ready Solutions</h3>
+                </div>
+                
+            </div>
+        </div>
+    </section>
+
+    <section id="timeline" class="py-24 px-6 relative z-10">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 uppercase tracking-widest">Event Schedule</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div class="relative border-l-2 border-white/20 ml-6 space-y-12 pb-4">
+                    <div class="relative pl-12 reveal">
+                        <div class="absolute -left-[9px] top-2 w-5 h-5 bg-cyan-500 rounded-full border-4 border-[#0f172a]"></div>
+                        <span class="text-cyan-400 text-xs font-bold uppercase tracking-widest">Phase 1</span>
+                        <h3 class="text-2xl font-bold mt-1">Idea Submission</h3>
+                        <p class="text-gray-400">Before <span class="text-white font-bold">Feb 4th</span>.</p>
+                    </div>
+                    <div class="relative pl-12 reveal" style="animation-delay: 0.2s;">
+                        <div class="absolute -left-[9px] top-2 w-5 h-5 bg-purple-500 rounded-full border-4 border-[#0f172a]"></div>
+                        <span class="text-purple-400 text-xs font-bold uppercase tracking-widest">Phase 2</span>
+                        <h3 class="text-2xl font-bold mt-1">Shortlisting</h3>
+                        <p class="text-gray-400">Teams announced on <span class="text-white font-bold">Feb 5th</span>.</p>
+                    </div>
+                    <div class="relative pl-12 reveal" style="animation-delay: 0.4s;">
+                        <div class="absolute -left-[9px] top-2 w-5 h-5 bg-pink-500 rounded-full border-4 border-[#0f172a]"></div>
+                        <span class="text-pink-400 text-xs font-bold uppercase tracking-widest">Phase 3</span>
+                        <h3 class="text-2xl font-bold mt-1">Hackathon Days</h3>
+                        <p class="text-gray-400"><span class="text-white font-bold">Feb 6th & 7th</span>.</p>
+                    </div>
+                    <div class="relative pl-12 reveal" style="animation-delay: 0.6s;">
+                        <div class="absolute -left-[9px] top-2 w-5 h-5 bg-yellow-500 rounded-full border-4 border-[#0f172a]"></div>
+                        <span class="text-yellow-400 text-xs font-bold uppercase tracking-widest">Phase 4</span>
+                        <h3 class="text-2xl font-bold mt-1">Prize Distribution</h3>
+                        <p class="text-gray-400"><span class="text-white font-bold">Feb 7th Evening</span>.</p>
+                    </div>
+                </div>
+                
+                <div class="glass-card p-6 rounded-2xl text-center">
+                    <h3 class="text-xl font-bold mb-4 text-cyan-400 uppercase tracking-widest">February 2026</h3>
+                    <div class="grid grid-cols-7 gap-2 text-gray-400 text-sm mb-2 font-bold"><div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div></div>
+                    <div class="grid grid-cols-7 gap-2 text-sm font-light">
+                        <div class="calendar-day normal-day">1</div>
+                        <div class="calendar-day normal-day">2</div>
+                        <div class="calendar-day normal-day">3</div>
+                        <div class="calendar-day normal-day">4</div>
+                        <div class="calendar-day normal-day">5</div>
+                        <div class="calendar-day event-day">6</div> 
+                        <div class="calendar-day event-day">7</div> 
+                        <div class="calendar-day normal-day">8</div>
+                        <div class="calendar-day normal-day">9</div>
+                        <div class="calendar-day normal-day">10</div>
+                        <div class="calendar-day normal-day">11</div>
+                        <div class="calendar-day normal-day">12</div>
+                        <div class="calendar-day normal-day">13</div>
+                        <div class="calendar-day normal-day">14</div>
+                        <div class="calendar-day normal-day">15</div>
+                        <div class="calendar-day normal-day">16</div>
+                        <div class="calendar-day normal-day">17</div>
+                        <div class="calendar-day normal-day">18</div>
+                        <div class="calendar-day normal-day">19</div>
+                        <div class="calendar-day normal-day">20</div>
+                        <div class="calendar-day normal-day">21</div>
+                        <div class="calendar-day normal-day">22</div>
+                        <div class="calendar-day normal-day">23</div>
+                        <div class="calendar-day normal-day">24</div>
+                        <div class="calendar-day normal-day">25</div>
+                        <div class="calendar-day normal-day">26</div>
+                        <div class="calendar-day normal-day">27</div>
+                        <div class="calendar-day normal-day">28</div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-6 italic">Mark your calendars! The challenge begins Feb 6.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+   <section id="register" class="py-24 px-6 relative overflow-hidden z-10">
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-cyan-500/10 rounded-full blur-[120px] -z-10"></div>
+
+    <div class="max-w-5xl mx-auto glass-card p-12 md:p-20 rounded-3xl reveal text-center">
+
+        <h2 class="text-4xl md:text-5xl font-black uppercase tracking-widest text-gradient mb-8">
+            Participant Dashboard
+        </h2>
+
+        <p class="text-gray-300 text-lg leading-relaxed max-w-3xl mx-auto">
+            Welcome to the official registration portal for <span class="text-cyan-400 font-bold">COGNIFY Hackfest 2026</span>. 
+            This dashboard is your entry point into a 24-hour innovation challenge where ideas turn into real prototypes. 
+            Gather your team, choose your theme, and step into a battlefield of creativity, AI, IoT, and engineering excellence.
+            <br><br>
+            Only shortlisted teams will enter the final hackathon arena on <span class="text-white font-bold">Feb 6 & 7</span>. 
+            Make sure your idea stands out, because this is where innovators are recognized.
+        </p>
+
+        <div class="mt-12">
+            <a href="https://forms.gle/F87vfNdBKUdQpHJy7" target="_blank"
+               class="inline-flex items-center gap-4 bg-gradient-to-r from-cyan-500 to-blue-600 px-14 py-5 rounded-full text-lg font-bold uppercase tracking-widest shadow-[0_0_40px_rgba(6,182,212,0.5)] hover:shadow-[0_0_70px_rgba(6,182,212,0.9)] transition transform hover:scale-105">
+                
+                Register Now
+                <i class="fas fa-arrow-right-long text-xl animate-pulse"></i>
+            </a>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-8 uppercase tracking-widest">
+            Team Size: 2 – 3 Members | Open to All Departments
+        </p>
+
+    </div>
+</section>
+
+
+     <section class="py-12 bg-black/30">
+        <div class="max-w-3xl mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-8 uppercase tracking-widest">FAQ</h2>
+            <div class="space-y-4">
+                <div class="glass-card rounded-lg overflow-hidden faq-item">
+                    <button class="w-full text-left p-4 font-bold flex justify-between items-center" onclick="toggleFaq(this)">
+                        Will food be provided? <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-content px-4 pb-4 text-gray-400 text-sm">Yes, lunch and refreshments will be provided for all participants on both days.</div>
+                </div>
+                <div class="glass-card rounded-lg overflow-hidden faq-item">
+                    <button class="w-full text-left p-4 font-bold flex justify-between items-center" onclick="toggleFaq(this)">
+                        Is there a registration fee? <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-content px-4 pb-4 text-gray-400 text-sm">No, participation is free for all KNCET students. This event is sponsored by the ECE Association.</div>
+                </div>
+                <div class="glass-card rounded-lg overflow-hidden faq-item">
+                    <button class="w-full text-left p-4 font-bold flex justify-between items-center" onclick="toggleFaq(this)">
+                        Is it Hardware or Software? <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-content px-4 pb-4 text-gray-400 text-sm">Both! You can build physical IoT/Robotics models or pure software/AI solutions depending on your chosen theme.</div>
+                </div>
+                <div class="glass-card rounded-lg overflow-hidden faq-item">
+                    <button class="w-full text-left p-4 font-bold flex justify-between items-center" onclick="toggleFaq(this)">
+                        Can we change team members? <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-content px-4 pb-4 text-gray-400 text-sm">Changes are allowed only before the Idea Submission deadline (Feb 4th). Contact coordinators for help.</div>
+                </div>
+                <div class="glass-card rounded-lg overflow-hidden faq-item">
+                    <button class="w-full text-left p-4 font-bold flex justify-between items-center" onclick="toggleFaq(this)">
+                        Do we need to bring laptops? <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-content px-4 pb-4 text-gray-400 text-sm">Yes, at least one laptop per team is mandatory for coding and presentation. Bring extension cords if possible.</div>
+                </div>
+                <div class="glass-card rounded-lg overflow-hidden faq-item">
+                    <button class="w-full text-left p-4 font-bold flex justify-between items-center" onclick="toggleFaq(this)">
+                        Will Wi-Fi be provided? <i class="fas fa-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-content px-4 pb-4 text-gray-400 text-sm">Yes, college Wi-Fi will be available, but we recommend bringing a mobile hotspot/dongle as a backup.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer id="contact" class="py-20 px-6 border-t border-white/10 bg-[#0b1120] relative z-10">
+        <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12">
+            <div>
+                <h3 class="text-cyan-400 font-bold text-lg mb-6 uppercase tracking-widest border-b border-white/10 pb-2">Staff Coordinators</h3>
+                <div class="space-y-3 text-sm text-gray-400">
+                    <p><strong class="text-white">Dr.M.paranthaman</strong> <br> Faculty Coordinator, ECE</p>+91 8973437584
+                </div>
+            </div>
+            <div>
+                <h3 class="text-purple-400 font-bold text-lg mb-6 uppercase tracking-widest border-b border-white/10 pb-2">Student Coordinators</h3>
+                <div class="space-y-3 text-sm text-gray-400">
+                    <p><strong class="text-white">Prasanth E</strong> <br> Final Year, ECE <br> +91 87783 33453</p>
+                    <p><strong class="text-white">Kowsika  S</strong> <br> Final Year, ECE <br> +91 95973 91079</p>
+                </div>
+            </div>
+            <div class="md:text-right">
+                <h3 class="text-pink-400 font-bold text-lg mb-6 uppercase tracking-widest border-b border-white/10 pb-2">Developed By</h3>
+                <p class="text-2xl font-bold text-white mb-2">Tharun</p>
+                <a href="#" class="text-sm font-bold text-cyan-500 hover:text-white uppercase tracking-widest flex items-center md:justify-end gap-2 transition">
+                    <i class="fas fa-spider"></i> Spider Webb Creations
+                </a>
+                <div class="flex gap-4 mt-6 md:justify-end text-xl">
+                    <a href="ww.linkedin.com/in/tharunkk307" class="hover:text-cyan-400 transition"><i class="fab fa-linkedin"></i></a>
+                    <a href="https://spiderwebbcreations.in/" class="hover:text-cyan-400 transition"><i class="fas fa-globe"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-20 text-xs text-gray-600 uppercase tracking-widest">&copy; 2026 Hackfest | KNCET ECE</div>
+    </footer>
+
+    <a href="https://wa.me/919789588573?text=Hi%20Althaf,%20query%20regarding%20Cognify!" target="_blank" class="fixed bottom-6 right-6 bg-green-500 text-white p-4 rounded-full shadow-lg hover:bg-green-600 transition hover:scale-110 z-50 animate-bounce">
+        <i class="fab fa-whatsapp text-3xl"></i>
+    </a>
+
+    <script>
+    // --- PRELOADER ---
+    window.addEventListener('load', () => { setTimeout(() => { document.getElementById('preloader').classList.add('preloader-hidden'); }, 1500); });
+
+    // --- HUD LOGIC ---
+    setInterval(() => { document.getElementById('sysLoad').innerText = Math.floor(Math.random() * 30 + 10) + "%"; }, 2000);
+    if ('getBattery' in navigator) {
+        navigator.getBattery().then(function(battery) {
+            function updateBattery() { const level = Math.floor(battery.level * 100); document.getElementById('battVal').innerText = level + "%"; document.getElementById('battBar').style.width = level + "%"; }
+            updateBattery(); battery.addEventListener('levelchange', updateBattery);
+        });
+    } else { document.getElementById('battVal').innerText = "UNK"; document.getElementById('battBar').style.width = "100%"; }
+
+    // --- BINARY BACKGROUND ---
+    const canvas = document.getElementById('neuralCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height, particles = [];
+    function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resize); resize();
+    class Particle { 
+        constructor() { this.x = Math.random() * width; this.y = Math.random() * height; this.vx = (Math.random()-0.5)*0.5; this.vy = (Math.random()-0.5)*0.5; this.val = Math.random() > 0.5 ? "1" : "0"; } 
+        update() { this.x += this.vx; this.y += this.vy; if(this.x<0||this.x>width) this.vx*=-1; if(this.y<0||this.y>height) this.vy*=-1; } 
+        draw() { ctx.font = "12px monospace"; ctx.fillStyle = 'rgba(0, 242, 254, 0.5)'; ctx.fillText(this.val, this.x, this.y); } 
+    }
+    for(let i=0; i<80; i++) particles.push(new Particle()); 
+    function animate() { ctx.clearRect(0,0,width,height); particles.forEach((p) => { p.update(); p.draw(); }); requestAnimationFrame(animate); }
+    animate();
+
+    function closePoster() { document.getElementById('poster-modal').classList.add('hidden-modal'); }
+    function toggleFaq(btn) { btn.parentElement.classList.toggle('active'); }
+
+    const observer = new IntersectionObserver((entries) => { entries.forEach(entry => { if(entry.isIntersecting) entry.target.classList.add('active'); }); });
+    document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+
+    const target = new Date("February 6, 2026 09:00:00").getTime();
+    setInterval(() => {
+        const now = new Date().getTime(); const diff = target - now;
+        document.getElementById("days").innerText = Math.floor(diff / (1000 * 60 * 60 * 24));
+        document.getElementById("hours").innerText = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        document.getElementById("mins").innerText = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        document.getElementById("secs").innerText = Math.floor((diff % (1000 * 60)) / 1000);
+    }, 1000);
+
+    let code = ['h','a','c','k'], pos = 0;
+    document.addEventListener('keydown', e => { if(e.key.toLowerCase() === code[pos]) { pos++; if(pos === 4) { alert("DEV MODE UNLOCKED 🚀"); document.body.style.filter = "invert(1)"; pos=0; } } else pos=0; });
+</script>
+</body>
+</html>
